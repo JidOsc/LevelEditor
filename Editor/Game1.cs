@@ -35,10 +35,12 @@ namespace Editor
             AccessFolder();
             AccessMaps();
 
+            SetFullscreen(_graphics);
+
             Common.LoadTextures(Content);
 
-            tileSelection = new TileSelection(new Vector2(GraphicsDevice.Viewport.Width - 200, 100), 32, 5);
-            tilemap = new Tilemap(32, 5);
+            tileSelection = new TileSelection(new Vector2(GraphicsDevice.Viewport.Width - 200, 100), 32, 11);
+            tilemap = new Tilemap(32, 11);
             currentTile = Vector2.Zero;
 
             base.Initialize();
@@ -61,7 +63,7 @@ namespace Editor
             currentTile = WorldToGrid(Common.currentMouse.Position.ToVector2(), 32);
             tileSelection.Update(gameTime);
 
-            if(Common.currentMouse.LeftButton == ButtonState.Pressed && Common.lastMouse.LeftButton != ButtonState.Pressed && currentTile.X >= 0 && currentTile.X < map[0].Length && currentTile.Y >= 0 && currentTile.Y < map.Length)
+            if(Common.currentMouse.LeftButton == ButtonState.Pressed /*&& Common.lastMouse.LeftButton != ButtonState.Pressed*/ && currentTile.X >= 0 && currentTile.X < map[0].Length && currentTile.Y >= 0 && currentTile.Y < map.Length)
             {
                 SetTile(tileSelection.GetSelectedTile(), currentTile);
             }
@@ -71,6 +73,15 @@ namespace Editor
             Common.lastMouse = Common.currentMouse;
             Common.lastKeyboard = Common.currentKeyboard;
             base.Update(gameTime);
+        }
+
+        void SetFullscreen(GraphicsDeviceManager _graphics)
+        {
+            _graphics.IsFullScreen = true;
+            _graphics.PreferredBackBufferHeight = 1080;
+            _graphics.PreferredBackBufferWidth = 1980;
+            _graphics.ApplyChanges();
+            Window.Position = new Point(0, 0);
         }
 
         void SetTile(int tileNumber, Vector2 position)
@@ -100,7 +111,7 @@ namespace Editor
 
         void SaveMap(short[][] map)
         {
-            File.WriteAllText(filepathMaps, JsonSerializer.Serialize<short[][]>(map));
+            File.WriteAllText(filepathMaps, JsonSerializer.Serialize<short[][]>(map, new JsonSerializerOptions { WriteIndented = true}));
         }
 
         short[][] LoadMap()
@@ -126,16 +137,12 @@ namespace Editor
             }
             else
             {
-                map = new short[][]
+                map = new short[34][];
+
+                for(int i = 0; i < map.Length; i++)
                 {
-                    new short[] {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                    new short[] {0, 1, 0, 0, 0, 0, 0, 0, 0},
-                    new short[] {0, 0, 1, 0, 0, 4, 0, 0, 0},
-                    new short[] {0, 0, 0, 2, 0, 0, 0, 0, 0},
-                    new short[] {0, 0, 0, 0, 4, 0, 0, 0, 0},
-                    new short[] {0, 0, 0, 0, 0, 4, 0, 0, 0},
-                    new short[] {0, 0, 0, 0, 0, 0, 0, 0, 0}
-                };
+                    map[i] = new short[50];
+                }
             }
         }
 

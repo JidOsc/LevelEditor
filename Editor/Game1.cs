@@ -2,8 +2,10 @@
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Transactions;
 
 namespace Editor
 {
@@ -12,11 +14,19 @@ namespace Editor
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
 
-        Tilemap tilemap;
+        public enum EditorMode { tilemap, markers };
+        EditorMode currentMode = EditorMode.tilemap;
+
+        Tilemap tileMap;
+        Tilemap markerMap;
+
         short[][] map;
+        short[][] markers;
+
         Vector2 currentTile;
 
         TileSelection tileSelection;
+        TileSelection markerSelection;
 
         string filepathFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Brutal Business\");
         string filepathMaps;
@@ -39,8 +49,12 @@ namespace Editor
 
             Common.LoadTextures(Content);
 
-            tileSelection = new TileSelection(new Vector2(GraphicsDevice.Viewport.Width - 200, 100), 32, 11);
-            tilemap = new Tilemap(32, 11);
+            tileSelection = new TileSelection(new Vector2(GraphicsDevice.Viewport.Width - 200, 100), 32, 23, "tilesheet");
+            markerSelection = new TileSelection(new Vector2(GraphicsDevice.Viewport.Width - 150, 100), 32, 5, "markers");
+
+            tileMap = new Tilemap(32, 23, "tilesheet");
+            markerMap = new Tilemap(32, 4, "markers");
+
             currentTile = Vector2.Zero;
 
             base.Initialize();
@@ -61,14 +75,35 @@ namespace Editor
                 ExitEditor();
 
             currentTile = WorldToGrid(Common.currentMouse.Position.ToVector2(), 32);
-            tileSelection.Update(gameTime);
 
-            if(Common.currentMouse.LeftButton == ButtonState.Pressed /*&& Common.lastMouse.LeftButton != ButtonState.Pressed*/ && currentTile.X >= 0 && currentTile.X < map[0].Length && currentTile.Y >= 0 && currentTile.Y < map.Length)
+            switch (currentMode)
             {
-                SetTile(tileSelection.GetSelectedTile(), currentTile);
-            }
+                case EditorMode.tilemap:
+                    if(Common.currentKeyboard.IsKeyDown(Keys.S) && Common.lastKeyboard.IsKeyUp(Keys.S))
+                    {
+                        currentMode = EditorMode.markers;
+                    }
+                    tileSelection.Update(gameTime);
 
-            // TODO: Add your update logic here
+                    if (Common.currentMouse.LeftButton == ButtonState.Pressed /*&& Common.lastMouse.LeftButton != ButtonState.Pressed*/ && currentTile.X >= 0 && currentTile.X < map[0].Length && currentTile.Y >= 0 && currentTile.Y < map.Length)
+                    {
+                        SetTile(tileSelection.GetSelectedTile(), currentTile, currentMode);
+                    }
+                    break;
+
+                case EditorMode.markers:
+                    if (Common.currentKeyboard.IsKeyDown(Keys.S) && Common.lastKeyboard.IsKeyUp(Keys.S))
+                    {
+                        currentMode = EditorMode.tilemap;
+                    }
+                    markerSelection.Update(gameTime);
+
+                    if (Common.currentMouse.LeftButton == ButtonState.Pressed /*&& Common.lastMouse.LeftButton != ButtonState.Pressed*/ && currentTile.X >= 0 && currentTile.X < markers[0].Length && currentTile.Y >= 0 && currentTile.Y < markers.Length)
+                    {
+                        SetTile(markerSelection.GetSelectedTile(), currentTile, currentMode);
+                    }
+                    break;
+            }
 
             Common.lastMouse = Common.currentMouse;
             Common.lastKeyboard = Common.currentKeyboard;
@@ -79,14 +114,23 @@ namespace Editor
         {
             _graphics.IsFullScreen = true;
             _graphics.PreferredBackBufferHeight = 1080;
-            _graphics.PreferredBackBufferWidth = 1980;
+            _graphics.PreferredBackBufferWidth = 1920;
             _graphics.ApplyChanges();
             Window.Position = new Point(0, 0);
         }
 
-        void SetTile(int tileNumber, Vector2 position)
+        void SetTile(int tileNumber, Vector2 position, EditorMode currentMode)
         {
-            map[(int)position.Y][(int)position.X] = (short)tileNumber;
+            switch (currentMode)
+            {
+                case EditorMode.tilemap:
+                    map[(int)position.Y][(int)position.X] = (short)tileNumber;
+                    break;
+
+                case EditorMode.markers:
+                    markers[(int)position.Y][(int)position.X] = (short)tileNumber;
+                    break;
+            }
         }
 
         protected override void Draw(GameTime gameTime)
@@ -94,8 +138,12 @@ namespace Editor
             GraphicsDevice.Clear(Color.CornflowerBlue);
 
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-            tilemap.Draw(_spriteBatch, map, currentTile);
+            
+            tileMap.Draw(_spriteBatch, map, currentTile);
+            markerMap.Draw(_spriteBatch, markers, currentTile);
+
             tileSelection.Draw(_spriteBatch);
+            markerSelection.Draw(_spriteBatch);
             _spriteBatch.End();
 
             // TODO: Add your drawing code here
@@ -105,18 +153,18 @@ namespace Editor
 
         void ExitEditor()
         {
-            SaveMap(map);
+            SaveMap(map, markers);
             Exit();
         }
 
-        void SaveMap(short[][] map)
+        void SaveMap(short[][] map, short[][] markers)
         {
-            File.WriteAllText(filepathMaps, JsonSerializer.Serialize<short[][]>(map, new JsonSerializerOptions { WriteIndented = true}));
+            File.WriteAllText(filepathMaps, JsonSerializer.Serialize<Dictionary<string, short[][]>>(new Dictionary<string, short[][]>() { { "tilemap", map }, { "markers", markers } }, new JsonSerializerOptions { WriteIndented = true}));
         }
 
-        short[][] LoadMap()
+        Dictionary<string, short[][]> LoadMap()
         {
-            return JsonSerializer.Deserialize<short[][]>(File.ReadAllText(filepathMaps));
+            return JsonSerializer.Deserialize<Dictionary<string, short[][]>>(File.ReadAllText(filepathMaps));
         }
 
         void AccessFolder()
@@ -133,15 +181,20 @@ namespace Editor
 
             if(File.Exists(filepathMaps))
             {
-                map = LoadMap();
+                Dictionary<string, short[][]> tempDictionary = LoadMap();
+
+                map = tempDictionary["tilemap"];
+                markers = tempDictionary["markers"];
             }
             else
             {
                 map = new short[34][];
+                markers = new short[34][];
 
                 for(int i = 0; i < map.Length; i++)
                 {
-                    map[i] = new short[50];
+                    map[i] = new short[60];
+                    markers[i] = new short[60];
                 }
             }
         }

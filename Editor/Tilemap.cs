@@ -18,12 +18,12 @@ namespace Editor
         Rectangle sourceRectangle;
         int tileSize;
 
-        public Tilemap(int tileSize, int amountOfColumns)
+        public Tilemap(int tileSize, int amountOfColumns, string sheetName)
         {
             this.tileSize = tileSize;
             this.amountOfColumns = amountOfColumns;
 
-            tilesheet = Common.textures["tilesheet"];
+            tilesheet = Common.textures[sheetName];
 
             sourceRectangle = new Rectangle(new Point(0, 0), new Point(tileSize, tileSize));
         }

@@ -22,12 +22,12 @@ namespace Editor
         Texture2D tilesheet;
         int tileSize;
 
-        public TileSelection(Vector2 position, int tileSize, int numberOfFrames)
+        public TileSelection(Vector2 position, int tileSize, int numberOfFrames, string textureName)
         {
             this.position = position;
             this.tileSize = tileSize;
 
-            tilesheet = Common.textures["tilesheet"];
+            tilesheet = Common.textures[textureName];
             backgroundTexture = Common.textures["pixel"];
 
             background = new Rectangle(position.ToPoint(), new Point(tileSize + 100, tileSize * numberOfFrames + 100));

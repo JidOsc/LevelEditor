@@ -17,7 +17,8 @@ namespace Editor
         public static Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>()
         {
             {"tilesheet", null },
-            {"pixel", null }
+            {"pixel", null },
+            {"markers", null }
         };
 
         public static void LoadTextures(ContentManager _contentManager)
